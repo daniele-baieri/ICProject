@@ -1,7 +1,26 @@
-#include <algorithm>
-#include <iterator>
-
 #include "MINUtils.h"
+#include <iostream>
+
+
+void printIntMatrix(int* matrix, int n, int m) {
+    for (int i = 0; i < n; i++) {
+        for (int j = 0; j < m; j++) {
+            std::cout << matrix[i * m + j] << ", ";
+        }
+        std::cout << std::endl;
+    }
+    std::cout << std::endl;
+}
+
+void printBoolMatrix(bool* matrix, int n, int m) {
+    for (int i = 0; i < n; i++) {
+        for (int j = 0; j < m; j++) {
+            std::cout << (int)matrix[i * m + j] << ", ";
+        }
+        std::cout << std::endl;
+    }
+    std::cout << std::endl;
+}
 
 
 void generateCharacteristicMatrices(unsigned int N, bool* out) {
@@ -31,7 +50,7 @@ void generateButterflyButterflyTopology(int* topology) {
     // topology(p,st) = arrival port at stage st+1 of outgoing link at port p of stage st
     for (int st = 0; st < 6; st++) {
         for (int sw = 0; sw < 8; sw++) {
-            printf("Considering stage %d and starting switch %d\n", st, sw);
+            // printf("Considering stage %d and starting switch %d\n", st, sw);
             // selecting upper and lower port of switch sw at stage st
             int port_up = sw * 2;
             int port_down = sw * 2 + 1;
@@ -62,15 +81,15 @@ void generateButterflyButterflyTopology(int* topology) {
                 // lower edges are straight both depart and arrival
                 straight_port = port_down;
                 // upper edges are cross at depart and lower at arrival
-                cross_port_depart = port_down;
+                cross_port_depart = port_up;
                 cross_port_arrival = cross_sw * 2 + 1; // lower port of arrival sw
             }
             topology[straight_port * 6 + st] = straight_port;
             topology[cross_port_depart * 6 + st] = cross_port_arrival;
             //printf("depart port: %d, arrival port: %d\n", straight_port, straight_port);
-            printf("from %d we go in %d at stage %d\n", straight_port, topology[straight_port * 6 + st], st);
+            // printf("from %d we go in %d at stage %d\n", straight_port, topology[straight_port * 6 + st], st);
             //printf("depart port: %d, arrival port: %d\n", cross_port_depart, cross_port_arrival);
-            printf("from %d we go in %d at stage %d\n", cross_port_depart, topology[cross_port_depart * 6 + st], st);
+            // printf("from %d we go in %d at stage %d\n", cross_port_depart, topology[cross_port_depart * 6 + st], st);
 
 
         }

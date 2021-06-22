@@ -110,13 +110,11 @@
     </CudaCompile>
   </ItemDefinitionGroup>
   <ItemGroup>
-    <None Include="hello.cu" />
-  </ItemGroup>
-  <ItemGroup>
     <CudaCompile Include="example.cu" />
-    <CudaCompile Include="latinsq.cu" />
+    <CudaCompile Include="LatinSquares.cu" />
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="LatinSquares.cuh" />
     <ClInclude Include="MINUtils.h" />
   </ItemGroup>
   <ItemGroup>

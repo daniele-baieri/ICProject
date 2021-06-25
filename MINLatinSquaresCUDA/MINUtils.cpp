@@ -2,28 +2,27 @@
 #include <iostream>
 
 
-void printIntMatrix(int* matrix, int n, int m) {
+void print_int_matrix(int* matrix, int n, int m) {
     for (int i = 0; i < n; i++) {
         for (int j = 0; j < m; j++) {
-            std::cout << matrix[i * m + j] << ", ";
+            printf("%d, ", matrix[i * m + j]);
         }
-        std::cout << std::endl;
+        printf("\n");
     }
-    std::cout << std::endl;
+    printf("\n");
 }
 
-void printBoolMatrix(bool* matrix, int n, int m) {
+void print_bool_matrix(bool* matrix, int n, int m) {
     for (int i = 0; i < n; i++) {
         for (int j = 0; j < m; j++) {
-            std::cout << (int)matrix[i * m + j] << ", ";
+            printf("%d, ", matrix[i * m + j]);
         }
-        std::cout << std::endl;
+        printf("\n");
     }
-    std::cout << std::endl;
+    printf("\n");
 }
 
-
-void generateCharacteristicMatrices(unsigned int N, bool* out) {
+void make_characteristic_matrices(unsigned int N, bool* out) {
 	// auto N = 16;
 	bool row[7];
 	for (int b_0 = 0; b_0 <= 1; b_0++) {
@@ -46,7 +45,7 @@ void generateCharacteristicMatrices(unsigned int N, bool* out) {
 	}
 }
 
-void generateButterflyButterflyTopology(int* topology) {
+void make_butterfly_butterfly_topology(int* topology) {
     // topology(p,st) = arrival port at stage st+1 of outgoing link at port p of stage st
     for (int st = 0; st < 6; st++) {
         for (int sw = 0; sw < 8; sw++) {

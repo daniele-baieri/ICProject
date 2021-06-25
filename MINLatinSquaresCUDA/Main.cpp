@@ -4,7 +4,7 @@
 #include <cstdlib>
 
 
-void testLatinSquare(bool* matrices, int* topology, bool* conf) {
+bool test_latin_square(bool* matrices, int* topology, bool* conf) {
 
 	for (int i = 0; i < 8; i++) {
 		for (int j = 0; j < 7; j++) {
@@ -12,7 +12,7 @@ void testLatinSquare(bool* matrices, int* topology, bool* conf) {
 		}
 	}
 
-	printBoolMatrix(conf, 8, 7);
+	print_bool_matrix(conf, 8, 7);
 
 	int perm[16 * 16];
 	bool xor[8 * 7];
@@ -26,9 +26,9 @@ void testLatinSquare(bool* matrices, int* topology, bool* conf) {
 			}
 		}
 
-		if (m == 0) {
-			printBoolMatrix(to_xor, 8, 7);
-			printBoolMatrix(xor, 8, 7);
+		if (m == 1) {
+			print_bool_matrix(to_xor, 8, 7);
+			print_bool_matrix(xor, 8, 7);
 		}
 
 		for (int stage = 0; stage < 7; stage++) {
@@ -47,6 +47,11 @@ void testLatinSquare(bool* matrices, int* topology, bool* conf) {
 					curr_perm[low_port * 7 + stage] = curr_perm[up_port * 7 + stage];
 					curr_perm[up_port * 7 + stage] = lp;
 				}
+				if (stage == 6) {
+					perm[m * 16 + up_port] = curr_perm[up_port * 7 + stage];
+					perm[m * 16 + low_port] = curr_perm[low_port * 7 + stage];
+				}
+
 			}
 			for (int port = 0; port < 16 && stage < 6; port++) {
 				// apply topology
@@ -54,24 +59,30 @@ void testLatinSquare(bool* matrices, int* topology, bool* conf) {
 			}
 		}
 
-		if (m == 0) printIntMatrix(curr_perm, 16, 7);
+		if (m == 1) print_int_matrix(curr_perm, 16, 7);
 
 	}
+
+	print_int_matrix(perm, 16, 16);
+
+	for (int i = 0; i < 16; i++) {
+		for (int j = 0; j < 16; j++) {
+			int v = perm[i * 16 + j];
+			for (int r = i; r < 16; r++) {
+				if (perm[r * 16 + j] == v) return false;
+			}
+		}
+	}
+
+	return true;
 
 }
 
 
+extern void cuda_main();
 
 int main() {
 
-	int* TOP = new int[16 * 6];
-	generateButterflyButterflyTopology(TOP);
-	printIntMatrix(TOP, 16, 6);
-
-	bool* out = new bool[16 * 8 * 7];
-	generateCharacteristicMatrices(0, out);
-
-	bool* conf = new bool[8 * 7];
-	testLatinSquare(out, TOP, conf);
+	cuda_main();
 
 }

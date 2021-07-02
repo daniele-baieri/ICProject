@@ -158,10 +158,10 @@ void cuda_main() {
 			fprintf(fd, "THREAD %d: OUTPUT = %d\n\n", idx, out_ij);
 			for (int x = 0; x < 16; x++) {
 				for (int y = 0; y < 16; y++) 
-					fprintf(fd, "%2d ", out_perm[idx * 16 * 16 + x * 16 + y]);
+					fprintf(fd, "%2d ", out_perm[idx * 16 * 16 + x * 16 + y]);  // show resulting permutations by columns
 				fprintf(fd, "| ");
 				for (int y = 0; y < 7 && x < 8; y++) 
-					fprintf(fd, "%d ", out_conf[idx * 8 * 7 + x * 7 + y]);
+					fprintf(fd, "%d ", out_conf[idx * 8 * 7 + x * 7 + y]);  // show random configuration on the side
 				fprintf(fd, "\n");
 			}
 			fprintf(fd, "\n%s\n\n", DELIMITER);

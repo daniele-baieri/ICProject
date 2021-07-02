@@ -1,8 +1,13 @@
 ﻿#include "LatinSquares.cuh"
-#include "MINUtils.h"
+#include "Utils.h"
+#include "MIN.h"
 #include <math.h>
 #include <stdio.h>
 #include <stdbool.h>
+#include <stdlib.h>
+
+#define OUTFILE "./Results/results.txt"
+#define DELIMITER "-----------"
 
 
 __global__ void setup_rand_state(curandState* state) {
@@ -27,17 +32,6 @@ __global__ void check_latin_square(curandState* d_state, bool* matrices, int* to
 		}
 	}
 
-	/*
-	for (int i = 0; i < 8; i++) {
-		for (int j = 0; j < 7; j++) {
-			printf("%d, ", conf[i * 7 + j]);
-		}
-		printf("\n");
-	}
-	printf("\n");
-	*/
-
-	// int perm[16 * 16];
 	bool xor [8 * 7];
 	int curr_perm[16 * 7];
 
@@ -98,10 +92,7 @@ __global__ void check_latin_square(curandState* d_state, bool* matrices, int* to
 
 void cuda_handle_error() {
 	auto err = cudaGetLastError();
-	printf(cudaGetErrorName(err));
-	printf(": ");
-	printf(cudaGetErrorString(err));
-	printf("\n");
+	printf("%s: %s\n", cudaGetErrorName(err), cudaGetErrorString(err));
 }
 
 void cuda_main() {
@@ -128,7 +119,7 @@ void cuda_main() {
 	cudaMalloc((void**)&conf, (GRID * BLOCK) * (8 * 7) * sizeof(bool));
 	cudaMalloc((void**)&is_latin_square, (GRID * BLOCK) * sizeof(bool));
 	cudaMalloc((void**)&perm, (GRID * BLOCK) * (16 * 16) * sizeof(int)); 
-	cudaMalloc((void**)&dev_states, GRID * GRID * sizeof(curandState));
+	cudaMalloc((void**)&dev_states, GRID * BLOCK * sizeof(curandState));
 	cuda_handle_error();
 
 	setup_rand_state << <GRID, BLOCK >> > (dev_states);
@@ -156,6 +147,30 @@ void cuda_main() {
 	cudaMemcpy(out_perm, perm, (GRID * BLOCK) * (16 * 16) * sizeof(int), cudaMemcpyDeviceToHost);
 	cuda_handle_error();
 
+	FILE* fd = fopen(OUTFILE, "w+");
+
+	int idx;
+	bool out_ij;
+	for (int i = 0; i < GRID; i++) {
+		for (int j = 0; j < BLOCK; j++) {
+			idx = i * BLOCK + j;
+			out_ij = output[idx];
+			fprintf(fd, "THREAD %d: OUTPUT = %d\n\n", idx, out_ij);
+			for (int x = 0; x < 16; x++) {
+				for (int y = 0; y < 16; y++) 
+					fprintf(fd, "%2d ", out_perm[idx * 16 * 16 + x * 16 + y]);
+				fprintf(fd, "| ");
+				for (int y = 0; y < 7 && x < 8; y++) 
+					fprintf(fd, "%d ", out_conf[idx * 8 * 7 + x * 7 + y]);
+				fprintf(fd, "\n");
+			}
+			fprintf(fd, "\n%s\n\n", DELIMITER);
+		}
+	}
+
+	fclose(fd);
+
+	/*
 	printf("Outputs for each thread:\n");
 	print_bool_matrix(output, GRID, BLOCK);
 
@@ -188,6 +203,7 @@ void cuda_main() {
 	printf("Configuration and permutation for an unsuccessful thread:\n");
 	print_bool_matrix(&out_conf[(r_zero * BLOCK + c_zero) * 8 * 7], 8, 7);
 	print_int_matrix(&out_perm[(r_zero * BLOCK + c_zero) * 8 * 7], 16, 16);
+	*/
 	
 	
 

@@ -6,6 +6,6 @@
 #include <curand_kernel.h>
 
 
-__global__ void check_latin_square(bool* matrices, int* topology, bool* conf, bool* is_latin_square, int* perm);
+__global__ void check_latin_square(curandState* state, bool* matrices, int* topology, bool* conf, bool* is_latin_square, int* perm);
 
 __global__ void setup_rand_state(curandState* state);

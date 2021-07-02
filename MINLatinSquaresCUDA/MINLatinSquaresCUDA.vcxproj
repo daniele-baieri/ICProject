@@ -114,11 +114,13 @@
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="LatinSquares.cuh" />
-    <ClInclude Include="MINUtils.h" />
+    <ClInclude Include="MIN.h" />
+    <ClInclude Include="Utils.h" />
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="Main.cpp" />
-    <ClCompile Include="MINUtils.cpp" />
+    <ClCompile Include="MIN.cpp" />
+    <ClCompile Include="Utils.cpp" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">

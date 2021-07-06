@@ -31,7 +31,7 @@ void cuda_main() {
 
 	const int GRID = 10;
 	const int BLOCK = 10;
-	const int LS_SAMPLES = 5;
+	const int LS_SAMPLES = 10;
 
 	/// COMPUTE LATIN SQUARES
 
@@ -89,7 +89,8 @@ void cuda_main() {
 
 	delete[] out_conf;
 
-	printf("Done in %6.4f ms.\n", clock() - start_ls);
+	auto end_ls = clock();
+	printf("Done in %6.4f ms.\n", (double)(end_ls - start_ls) / CLOCKS_PER_SEC);
 
 	/// END: COMPUTE LATIN SQUARES
 
@@ -124,7 +125,8 @@ void cuda_main() {
 	write_output_mols(fd_mols, out_mols, out_perm, out_pairs, GRID, BLOCK, LS_SAMPLES);
 	fclose(fd_mols);
 
-	printf("Done in %6.4f ms.\n", clock() - start_mols);
+	auto end_mols = clock();
+	printf("Done in %6.4f ms.\n", (double)(end_mols - start_mols) / CLOCKS_PER_SEC);
 
 	/// END: COMPUTE MUTUALLY ORTHOGONAL LATIN SQUARES
 

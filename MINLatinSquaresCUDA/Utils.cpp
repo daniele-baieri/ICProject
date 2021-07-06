@@ -67,3 +67,18 @@ void write_output_mols(FILE* fd, bool* mols, int* perm, int* pair_idxs, int N, i
 		}
 	}
 }
+
+
+bool get_bit(int n, int pos, int tot_bit) {
+    /*
+    return bit in position pos starting from left
+    */
+    bool reminder;
+    int n_div = tot_bit - pos;
+    while (n_div > 0) {
+        reminder = n % 2;
+        n = n / 2;
+        n_div--;
+    }
+    return reminder;
+}

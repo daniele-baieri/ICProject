@@ -31,7 +31,7 @@ void cuda_main() {
 
 	const int GRID = 10;
 	const int BLOCK = 10;
-	const int LS_SAMPLES = 10;
+	const int LS_SAMPLES = 5;
 
 	/// COMPUTE LATIN SQUARES
 

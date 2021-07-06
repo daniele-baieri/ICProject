@@ -110,6 +110,7 @@
     </CudaCompile>
   </ItemDefinitionGroup>
   <ItemGroup>
+    <CudaCompile Include="CudaMain.cu" />
     <CudaCompile Include="LatinSquares.cu" />
   </ItemGroup>
   <ItemGroup>

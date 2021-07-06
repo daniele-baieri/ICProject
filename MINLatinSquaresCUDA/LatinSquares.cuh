@@ -9,3 +9,5 @@
 __global__ void check_latin_square(curandState* state, bool* matrices, int* topology, bool* conf, bool* is_latin_square, int* perm);
 
 __global__ void setup_rand_state(curandState* state);
+
+__global__ void check_mols(curandState* state, int* perms, bool* latin_squares, bool* mols, int* idx);

@@ -88,6 +88,7 @@ void cuda_main() {
 	fclose(fd_ls);
 
 	delete[] out_conf;
+	delete[] out_is_ls;
 
 	auto end_ls = clock();
 	printf("Done in %6.4f ms.\n", (double)(end_ls - start_ls) / CLOCKS_PER_SEC);
@@ -115,11 +116,17 @@ void cuda_main() {
 	check_mols << < grid_size, LS_SAMPLES >> > (dev_states2, dev_perm, dev_is_latin_square, dev_mols, dev_pairs);
 	cuda_handle_error();
 
+	CUDA_ERROR_CHECK(cudaFree(dev_is_latin_square));
+	CUDA_ERROR_CHECK(cudaFree(dev_perm));
+	CUDA_ERROR_CHECK(cudaFree(dev_states2));
+
 	bool* out_mols = new bool[GRID * BLOCK * LS_SAMPLES];
 	int* out_pairs = new int[GRID * BLOCK * LS_SAMPLES * 2];
 
 	CUDA_ERROR_CHECK(cudaMemcpy(out_mols, dev_mols, GRID * BLOCK * LS_SAMPLES * sizeof(bool), cudaMemcpyDeviceToHost));
 	CUDA_ERROR_CHECK(cudaMemcpy(out_pairs, dev_pairs, GRID * BLOCK * LS_SAMPLES * 2 * sizeof(int), cudaMemcpyDeviceToHost));
+	CUDA_ERROR_CHECK(cudaFree(dev_mols));
+	CUDA_ERROR_CHECK(cudaFree(dev_pairs));
 
 	FILE* fd_mols = fopen(OUTFILE2, "w+");
 	write_output_mols(fd_mols, out_mols, out_perm, out_pairs, GRID, BLOCK, LS_SAMPLES);
@@ -132,13 +139,6 @@ void cuda_main() {
 
 	// release memory
 
-	CUDA_ERROR_CHECK(cudaFree(dev_is_latin_square));
-	CUDA_ERROR_CHECK(cudaFree(dev_perm));
-	CUDA_ERROR_CHECK(cudaFree(dev_mols));
-	CUDA_ERROR_CHECK(cudaFree(dev_pairs));
-	CUDA_ERROR_CHECK(cudaFree(dev_states2));
-
-	delete[] out_is_ls;
 	delete[] out_perm;
 	delete[] out_mols;
 	delete[] out_pairs;

@@ -13,7 +13,10 @@ void make_characteristic_matrices(unsigned int N, bool* out) {
                 for (int b_6 = 0; b_6 <= 1; b_6++) {
                     row[0] = b_0;
                     row[1] = b_1;
+                    row[2] = 0;
                     row[3] = b_3;
+                    row[4] = 0;
+                    row[5] = 0;
                     row[6] = b_6;
                     int idx = 8 * b_0 + 4 * b_1 + 2 * b_3 + 1 * b_6;
                     for (int i = 0; i < 8; i++) {
@@ -26,10 +29,14 @@ void make_characteristic_matrices(unsigned int N, bool* out) {
         }
     }
     */
+    
     for (int b_3 = 0; b_3 <= 1; b_3++) {
         for (int b_4 = 0; b_4 <= 1; b_4++) {
             for (int b_5 = 0; b_5 <= 1; b_5++) {
                 for (int b_6 = 0; b_6 <= 1; b_6++) {
+                    row[0] = 0;
+                    row[1] = 0;
+                    row[2] = 0;
                     row[3] = b_3;
                     row[4] = b_4;
                     row[5] = b_5;
@@ -44,6 +51,7 @@ void make_characteristic_matrices(unsigned int N, bool* out) {
             }
         }
     }
+    
 }
 
 void make_butterfly_butterfly_topology(int* topology) {
@@ -98,11 +106,13 @@ void make_butterfly_butterfly_topology(int* topology) {
 
 bool check_latin_square_sequential(bool* matrices, int* topology, bool* conf, int* perm) {
 
+    /*
     for (int i = 0; i < 8; i++) {
         for (int j = 0; j < 7; j++) {
             conf[i * 7 + j] = (rand() >= 0.5f ? true : false);
         }
     }
+    */
 
     bool xor [8 * 7];
     int curr_perm[16 * 7];

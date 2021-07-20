@@ -12,7 +12,7 @@ __global__ void setup_rand_state(curandState* state) {
 	int tid_in_block = threadIdx.x + blockDim.x * threadIdx.y;
 	int bid_in_grid = blockIdx.x + gridDim.x * blockIdx.y;
 	int idx = bid_in_grid * num_in_block + tid_in_block;
-	curand_init(1234, idx, 0, &state[idx]);
+	curand_init(1027, idx, 0, &state[idx]);
 
 }
 
@@ -89,20 +89,22 @@ __global__ void check_latin_square(curandState* d_state, bool* matrices, int* to
 
 }
 
-__global__ void check_mols(curandState* state, int* perms, bool* latin_squares, bool* mols, int* pairs) {
+__global__ void check_mols_random(curandState* state, int* perms, bool* latin_squares, bool* mols, int* pairs, bool debug) {
 
 	int idx_src = blockIdx.y * gridDim.x + blockIdx.x;
 	int idx_dst = idx_src * blockDim.x + threadIdx.x;
 	
 	int compare = (int)(curand_uniform(&state[idx_dst]) * (gridDim.x * gridDim.y));
-	// printf("%d, %d, %d\n", idx_dst, idx_src, compare);
+	// printf("Thread: %d Compares %d and %d\n", idx_dst, idx_src, compare);
 
 	pairs[idx_dst * 2] = idx_src;
 	pairs[idx_dst * 2 + 1] = compare;
 
 	if (!latin_squares[idx_src] || !latin_squares[compare]) {	// return false if one of idx_src and compare isn't a latin square
+		if (debug) printf("Thread: %d -- %d or %d is not a latin square\n", idx_dst, idx_src, compare);
 		mols[idx_dst] = false;
 	} else if (idx_src == compare) {  // return false if random picked source latin square (can't be orthogonal to itself)
+		if (debug) printf("Thread: %d -- %d = %d\n", idx_dst, idx_src, compare);
 		mols[idx_dst] = false;
 	} else {
 		mols[idx_dst] = true;
@@ -114,6 +116,7 @@ __global__ void check_mols(curandState* state, int* perms, bool* latin_squares, 
 			b = ls_B[i];
 			for (int j = i + 1; j < 16 * 16; j++) {
 				if (a == ls_A[j] && b == ls_B[j]) {
+					if (debug) printf("Thread: %d -- LS(%d, %d) -- (%d, %d) = (%d, %d) [%d, %d]\n", idx_dst, idx_src, compare, a, b, ls_A[j], ls_B[j], i, j);
 					mols[idx_dst] = false;
 					break;
 				}
@@ -121,4 +124,48 @@ __global__ void check_mols(curandState* state, int* perms, bool* latin_squares, 
 		}
 	}
 	
+}
+
+__global__ void check_mols_complete(int* perms, bool* latin_squares, bool* mols, int* pairs, bool debug) {
+
+	int idx_src = blockIdx.x + blockIdx.y * gridDim.x;
+	int compare = (threadIdx.x * blockDim.x) + blockIdx.z;
+
+	int block_id = idx_src + gridDim.x * gridDim.y * blockIdx.z; 
+	int idx_dst = block_id * blockDim.x + threadIdx.x;
+
+	// printf("Thread: %d Compares %d and %d\n", idx_dst, idx_src, compare);
+
+	pairs[idx_dst * 2] = idx_src;
+	pairs[idx_dst * 2 + 1] = compare;
+
+	if (!latin_squares[idx_src] || !latin_squares[compare]) {	// return false if one of idx_src and compare isn't a latin square
+		if (debug) printf("Thread: %d -- %d or %d is not a latin square\n", idx_dst, idx_src, compare);
+		mols[idx_dst] = false;
+	}
+	else if (idx_src <= compare) {  // can't be orthogonal to itself + break symmetry
+		if (debug) printf("Thread: %d -- %d <= %d\n", idx_dst, idx_src, compare);
+		mols[idx_dst] = false;
+	}
+	else {
+		mols[idx_dst] = true;
+		int* ls_A = &perms[idx_src * 16 * 16];
+		int* ls_B = &perms[compare * 16 * 16];
+		int a, b;
+		for (int i = 0; i < 16 * 16 && mols[idx_dst]; i++) {
+			a = ls_A[i];
+			b = ls_B[i];
+			for (int j = i + 1; j < 16 * 16; j++) {
+				if (a == ls_A[j] && b == ls_B[j]) {
+					if (debug) printf(
+						"Thread: %d -- LS: (%d, %d) -- [A(%d, %d) = (%d, %d) = (%d, %d) = B(%d, %d)]\n",
+						idx_dst, idx_src, compare, i / 16, i % 16, a, b, ls_A[j], ls_B[j], j / 16, j % 16
+					);
+					mols[idx_dst] = false;
+					break;
+				}
+			}
+		}
+	}
+
 }

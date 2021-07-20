@@ -9,8 +9,9 @@
 
 
 
-#define OUTFILE1 "./Results/results-ls.txt"
-#define OUTFILE2 "./Results/results-mols.txt"
+#define OUTFILE1    "./Results/results-ls.txt"
+#define OUTFILE2    "./Results/results-mols.txt"
+#define DEBUG_LOG   "./Results/log.txt"
 
 #define CUDA_ERROR_CHECK(ans) { gpuAssert((ans), __FILE__, __LINE__); }
 inline void gpuAssert(cudaError_t code, const char* file, int line, bool abort = true)
@@ -29,9 +30,17 @@ void cuda_handle_error() {
 
 void cuda_main() {
 
-	const int GRID = 10;
-	const int BLOCK = 10;
-	const int LS_SAMPLES = 5;
+	const unsigned int N = 16;
+	const unsigned int SWITCHES = N / 2;
+	const unsigned int STAGES = (2 * log2(N)) - 1;
+
+	const unsigned int GRID = 10;
+	const unsigned int BLOCK = 5;
+	const unsigned int LS_SAMPLES = 200;
+	const bool DO_COMPLETE_CHECK = true;
+	const bool DEBUG = true;
+
+	freopen(DEBUG_LOG, "w+", stdout);
 
 	/// COMPUTE LATIN SQUARES
 
@@ -42,7 +51,8 @@ void cuda_main() {
 	make_butterfly_butterfly_topology(topology);
 
 	bool* char_mat = new bool[16 * 8 * 7];
-	make_characteristic_matrices(0, char_mat);
+	// make_characteristic_matrices(0, char_mat);
+	generate_rotation_configurations(topology, char_mat);
 
 	bool* dev_char_mat;
 	int* dev_topology;
@@ -98,42 +108,59 @@ void cuda_main() {
 
 	/// COMPUTE MUTUALLY ORTHOGONAL LATIN SQUARES
 
-	printf("Computing MOLS...\n");
+	printf("Computing MOLS, complete check: %d...\n", DO_COMPLETE_CHECK);
 	auto start_mols = clock();
 
 	bool* dev_mols;
 	int* dev_pairs;
 	curandState* dev_states2;
-	CUDA_ERROR_CHECK(cudaMalloc((void**)&dev_states2, (GRID * BLOCK * LS_SAMPLES) * sizeof(curandState)));
-	CUDA_ERROR_CHECK(cudaMalloc((void**)&dev_mols, (GRID * BLOCK * LS_SAMPLES) * sizeof(bool)));
-	CUDA_ERROR_CHECK(cudaMalloc((void**)&dev_pairs, (GRID * BLOCK * LS_SAMPLES * 2) * sizeof(int)));
+	dim3 grid_size;
+	unsigned int OUT_COL_SIZE;
+	unsigned int NUM_COMPARISONS;
 
-	auto grid_size = dim3(GRID, BLOCK, 1);
-
-	setup_rand_state << <grid_size, LS_SAMPLES >> > (dev_states2);
-	cuda_handle_error();
-
-	check_mols << < grid_size, LS_SAMPLES >> > (dev_states2, dev_perm, dev_is_latin_square, dev_mols, dev_pairs);
-	cuda_handle_error();
+	if (DO_COMPLETE_CHECK) {
+		NUM_COMPARISONS = GRID * BLOCK * GRID * BLOCK;
+		CUDA_ERROR_CHECK(cudaMalloc((void**)&dev_mols, (NUM_COMPARISONS) * sizeof(bool)));
+		CUDA_ERROR_CHECK(cudaMalloc((void**)&dev_pairs, (NUM_COMPARISONS * 2) * sizeof(int)));
+		grid_size = dim3(GRID, BLOCK, GRID);
+		check_mols_complete << < grid_size, BLOCK >> > (dev_perm, dev_is_latin_square, dev_mols, dev_pairs, DEBUG);
+		cuda_handle_error();
+		CUDA_ERROR_CHECK(cudaDeviceSynchronize());
+		OUT_COL_SIZE = GRID * BLOCK;
+	}
+	else {
+		NUM_COMPARISONS = GRID * BLOCK * LS_SAMPLES;
+		CUDA_ERROR_CHECK(cudaMalloc((void**)&dev_states2, (NUM_COMPARISONS) * sizeof(curandState)));
+		CUDA_ERROR_CHECK(cudaMalloc((void**)&dev_mols, (NUM_COMPARISONS) * sizeof(bool)));
+		CUDA_ERROR_CHECK(cudaMalloc((void**)&dev_pairs, (NUM_COMPARISONS * 2) * sizeof(int)));
+		grid_size = dim3(GRID, BLOCK, 1);
+		setup_rand_state << <grid_size, LS_SAMPLES >> > (dev_states2);
+		cuda_handle_error();
+		check_mols_random << < grid_size, LS_SAMPLES >> > (dev_states2, dev_perm, dev_is_latin_square, dev_mols, dev_pairs, DEBUG);
+		cuda_handle_error();
+		CUDA_ERROR_CHECK(cudaFree(dev_states2));
+		OUT_COL_SIZE = LS_SAMPLES;
+	}
 
 	CUDA_ERROR_CHECK(cudaFree(dev_is_latin_square));
 	CUDA_ERROR_CHECK(cudaFree(dev_perm));
-	CUDA_ERROR_CHECK(cudaFree(dev_states2));
 
-	bool* out_mols = new bool[GRID * BLOCK * LS_SAMPLES];
-	int* out_pairs = new int[GRID * BLOCK * LS_SAMPLES * 2];
+	bool* out_mols = new bool[NUM_COMPARISONS];
+	int* out_pairs = new int[NUM_COMPARISONS * 2];
 
-	CUDA_ERROR_CHECK(cudaMemcpy(out_mols, dev_mols, GRID * BLOCK * LS_SAMPLES * sizeof(bool), cudaMemcpyDeviceToHost));
-	CUDA_ERROR_CHECK(cudaMemcpy(out_pairs, dev_pairs, GRID * BLOCK * LS_SAMPLES * 2 * sizeof(int), cudaMemcpyDeviceToHost));
+	CUDA_ERROR_CHECK(cudaMemcpy(out_mols, dev_mols, NUM_COMPARISONS * sizeof(bool), cudaMemcpyDeviceToHost));
+	CUDA_ERROR_CHECK(cudaMemcpy(out_pairs, dev_pairs, NUM_COMPARISONS * 2 * sizeof(int), cudaMemcpyDeviceToHost));
 	CUDA_ERROR_CHECK(cudaFree(dev_mols));
 	CUDA_ERROR_CHECK(cudaFree(dev_pairs));
 
 	FILE* fd_mols = fopen(OUTFILE2, "w+");
-	write_output_mols(fd_mols, out_mols, out_perm, out_pairs, GRID, BLOCK, LS_SAMPLES);
+	write_output_mols(fd_mols, out_mols, out_perm, out_pairs, NUM_COMPARISONS);
 	fclose(fd_mols);
 
 	auto end_mols = clock();
 	printf("Done in %6.4f ms.\n", (double)(end_mols - start_mols) / CLOCKS_PER_SEC);
+
+
 
 	/// END: COMPUTE MUTUALLY ORTHOGONAL LATIN SQUARES
 

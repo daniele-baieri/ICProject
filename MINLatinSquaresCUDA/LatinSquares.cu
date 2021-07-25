@@ -18,7 +18,7 @@ __global__ void setup_rand_state(curandState* state) {
 
 __global__ void check_latin_square(curandState* d_state, bool* matrices, int* topology, bool* conf, bool* is_latin_square, int* perm) {
 
-	int t_idx = threadIdx.x + blockDim.x * blockIdx.x;  
+	int t_idx = blockIdx.x;  
 
 	// printf("%d\n", t_idx);
 
@@ -128,10 +128,10 @@ __global__ void check_mols_random(curandState* state, int* perms, bool* latin_sq
 
 __global__ void check_mols_complete(int* perms, bool* latin_squares, bool* mols, int* pairs, bool debug) {
 
-	int idx_src = blockIdx.x + blockIdx.y * gridDim.x;
-	int compare = (threadIdx.x * blockDim.x) + blockIdx.z;
+	int idx_src = blockIdx.x;
+	int compare = (blockIdx.y * blockDim.x) + threadIdx.x;
 
-	int block_id = idx_src + gridDim.x * gridDim.y * blockIdx.z; 
+	int block_id = blockIdx.y * gridDim.x + blockIdx.x;
 	int idx_dst = block_id * blockDim.x + threadIdx.x;
 
 	// printf("Thread: %d Compares %d and %d\n", idx_dst, idx_src, compare);
@@ -144,7 +144,7 @@ __global__ void check_mols_complete(int* perms, bool* latin_squares, bool* mols,
 		mols[idx_dst] = false;
 	}
 	else if (idx_src <= compare) {  // can't be orthogonal to itself + break symmetry
-		if (debug) printf("Thread: %d -- %d <= %d\n", idx_dst, idx_src, compare);
+		// if (debug) printf("Thread: %d -- %d <= %d\n", idx_dst, idx_src, compare);
 		mols[idx_dst] = false;
 	}
 	else {
@@ -158,7 +158,7 @@ __global__ void check_mols_complete(int* perms, bool* latin_squares, bool* mols,
 			for (int j = i + 1; j < 16 * 16; j++) {
 				if (a == ls_A[j] && b == ls_B[j]) {
 					if (debug) printf(
-						"Thread: %d -- LS: (%d, %d) -- [A(%d, %d) = (%d, %d) = (%d, %d) = B(%d, %d)]\n",
+						"Thread: %d -- LS: (A = %d, B = %d) -- [A(%d, %d) = (%d, %d) = (%d, %d) = B(%d, %d)]\n",
 						idx_dst, idx_src, compare, i / 16, i % 16, a, b, ls_A[j], ls_B[j], j / 16, j % 16
 					);
 					mols[idx_dst] = false;

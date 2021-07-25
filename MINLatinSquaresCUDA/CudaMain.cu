@@ -34,8 +34,11 @@ void cuda_main() {
 	const unsigned int SWITCHES = N / 2;
 	const unsigned int STAGES = (2 * log2(N)) - 1;
 
-	const unsigned int GRID = 10;
-	const unsigned int BLOCK = 5;
+	const unsigned int MOLS_GRID_PARALLEL = 10;
+	const unsigned int MOLS_SEQ_CUTOFF = 8;
+	const unsigned int NUM_LATIN_SQUARES = MOLS_GRID_PARALLEL * MOLS_SEQ_CUTOFF;
+	// const unsigned int BLOCK = 10;
+	
 	const unsigned int LS_SAMPLES = 200;
 	const bool DO_COMPLETE_CHECK = true;
 	const bool DEBUG = true;
@@ -63,18 +66,18 @@ void cuda_main() {
 
 	CUDA_ERROR_CHECK(cudaMalloc((void**)&dev_char_mat, (16 * 8 * 7) * sizeof(bool)));
 	CUDA_ERROR_CHECK(cudaMalloc((void**)&dev_topology, (16 * 6) * sizeof(int)));
-	CUDA_ERROR_CHECK(cudaMalloc((void**)&dev_conf, (GRID * BLOCK) * (8 * 7) * sizeof(bool)));
-	CUDA_ERROR_CHECK(cudaMalloc((void**)&dev_is_latin_square, (GRID * BLOCK) * sizeof(bool)));
-	CUDA_ERROR_CHECK(cudaMalloc((void**)&dev_perm, (GRID * BLOCK) * (16 * 16) * sizeof(int)));
-	CUDA_ERROR_CHECK(cudaMalloc((void**)&dev_states1, GRID * BLOCK * sizeof(curandState)));
+	CUDA_ERROR_CHECK(cudaMalloc((void**)&dev_conf, (NUM_LATIN_SQUARES) * (8 * 7) * sizeof(bool)));
+	CUDA_ERROR_CHECK(cudaMalloc((void**)&dev_is_latin_square, (NUM_LATIN_SQUARES) * sizeof(bool)));
+	CUDA_ERROR_CHECK(cudaMalloc((void**)&dev_perm, (NUM_LATIN_SQUARES) * (16 * 16) * sizeof(int)));
+	CUDA_ERROR_CHECK(cudaMalloc((void**)&dev_states1, NUM_LATIN_SQUARES * sizeof(curandState)));
 
 	CUDA_ERROR_CHECK(cudaMemcpy(dev_char_mat, char_mat, (16 * 8 * 7) * sizeof(bool), cudaMemcpyHostToDevice));
 	CUDA_ERROR_CHECK(cudaMemcpy(dev_topology, topology, (16 * 6) * sizeof(int), cudaMemcpyHostToDevice));
 
-	setup_rand_state << <GRID, BLOCK >> > (dev_states1);
+	setup_rand_state << <NUM_LATIN_SQUARES, 1 >> > (dev_states1);
 	cuda_handle_error();
 
-	check_latin_square << <GRID, BLOCK >> > (dev_states1, dev_char_mat, dev_topology, dev_conf, dev_is_latin_square, dev_perm);
+	check_latin_square << <NUM_LATIN_SQUARES, 1 >> > (dev_states1, dev_char_mat, dev_topology, dev_conf, dev_is_latin_square, dev_perm);
 	cuda_handle_error();
 
 	delete[] topology;
@@ -83,18 +86,18 @@ void cuda_main() {
 	CUDA_ERROR_CHECK(cudaFree(dev_topology));
 	CUDA_ERROR_CHECK(cudaFree(dev_states1));
 
-	bool* out_is_ls = new bool[GRID * BLOCK];
-	bool* out_conf = new bool[(GRID * BLOCK) * (8 * 7)];
-	int* out_perm = new int[(GRID * BLOCK) * (16 * 16)];
+	bool* out_is_ls = new bool[NUM_LATIN_SQUARES];
+	bool* out_conf = new bool[(NUM_LATIN_SQUARES) * (8 * 7)];
+	int* out_perm = new int[(NUM_LATIN_SQUARES) * (16 * 16)];
 
-	CUDA_ERROR_CHECK(cudaMemcpy(out_is_ls, dev_is_latin_square, GRID * BLOCK * sizeof(bool), cudaMemcpyDeviceToHost));
-	CUDA_ERROR_CHECK(cudaMemcpy(out_conf, dev_conf, (GRID * BLOCK) * (8 * 7) * sizeof(bool), cudaMemcpyDeviceToHost));
-	CUDA_ERROR_CHECK(cudaMemcpy(out_perm, dev_perm, (GRID * BLOCK) * (16 * 16) * sizeof(int), cudaMemcpyDeviceToHost));
+	CUDA_ERROR_CHECK(cudaMemcpy(out_is_ls, dev_is_latin_square, NUM_LATIN_SQUARES * sizeof(bool), cudaMemcpyDeviceToHost));
+	CUDA_ERROR_CHECK(cudaMemcpy(out_conf, dev_conf, (NUM_LATIN_SQUARES) * (8 * 7) * sizeof(bool), cudaMemcpyDeviceToHost));
+	CUDA_ERROR_CHECK(cudaMemcpy(out_perm, dev_perm, (NUM_LATIN_SQUARES) * (16 * 16) * sizeof(int), cudaMemcpyDeviceToHost));
 
 	CUDA_ERROR_CHECK(cudaFree(dev_conf));
 
 	FILE* fd_ls = fopen(OUTFILE1, "w+");
-	write_output_latin_square(fd_ls, out_is_ls, out_conf, out_perm, GRID, BLOCK);
+	write_output_latin_square(fd_ls, out_is_ls, out_conf, out_perm, NUM_LATIN_SQUARES);
 	fclose(fd_ls);
 
 	delete[] out_conf;
@@ -115,31 +118,27 @@ void cuda_main() {
 	int* dev_pairs;
 	curandState* dev_states2;
 	dim3 grid_size;
-	unsigned int OUT_COL_SIZE;
 	unsigned int NUM_COMPARISONS;
 
 	if (DO_COMPLETE_CHECK) {
-		NUM_COMPARISONS = GRID * BLOCK * GRID * BLOCK;
+		NUM_COMPARISONS = NUM_LATIN_SQUARES * NUM_LATIN_SQUARES;
 		CUDA_ERROR_CHECK(cudaMalloc((void**)&dev_mols, (NUM_COMPARISONS) * sizeof(bool)));
 		CUDA_ERROR_CHECK(cudaMalloc((void**)&dev_pairs, (NUM_COMPARISONS * 2) * sizeof(int)));
-		grid_size = dim3(GRID, BLOCK, GRID);
-		check_mols_complete << < grid_size, BLOCK >> > (dev_perm, dev_is_latin_square, dev_mols, dev_pairs, DEBUG);
+		grid_size = dim3(NUM_LATIN_SQUARES, MOLS_GRID_PARALLEL, 1);
+		check_mols_complete << < grid_size, MOLS_SEQ_CUTOFF >> > (dev_perm, dev_is_latin_square, dev_mols, dev_pairs, DEBUG);
 		cuda_handle_error();
 		CUDA_ERROR_CHECK(cudaDeviceSynchronize());
-		OUT_COL_SIZE = GRID * BLOCK;
 	}
 	else {
-		NUM_COMPARISONS = GRID * BLOCK * LS_SAMPLES;
+		NUM_COMPARISONS = NUM_LATIN_SQUARES * LS_SAMPLES;
 		CUDA_ERROR_CHECK(cudaMalloc((void**)&dev_states2, (NUM_COMPARISONS) * sizeof(curandState)));
 		CUDA_ERROR_CHECK(cudaMalloc((void**)&dev_mols, (NUM_COMPARISONS) * sizeof(bool)));
 		CUDA_ERROR_CHECK(cudaMalloc((void**)&dev_pairs, (NUM_COMPARISONS * 2) * sizeof(int)));
-		grid_size = dim3(GRID, BLOCK, 1);
-		setup_rand_state << <grid_size, LS_SAMPLES >> > (dev_states2);
+		setup_rand_state << <NUM_LATIN_SQUARES, LS_SAMPLES >> > (dev_states2);
 		cuda_handle_error();
-		check_mols_random << < grid_size, LS_SAMPLES >> > (dev_states2, dev_perm, dev_is_latin_square, dev_mols, dev_pairs, DEBUG);
+		check_mols_random << < NUM_LATIN_SQUARES, LS_SAMPLES >> > (dev_states2, dev_perm, dev_is_latin_square, dev_mols, dev_pairs, DEBUG);
 		cuda_handle_error();
 		CUDA_ERROR_CHECK(cudaFree(dev_states2));
-		OUT_COL_SIZE = LS_SAMPLES;
 	}
 
 	CUDA_ERROR_CHECK(cudaFree(dev_is_latin_square));

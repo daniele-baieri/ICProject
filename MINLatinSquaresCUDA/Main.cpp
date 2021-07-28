@@ -2,11 +2,11 @@
 #include "Utils.h"
 
 
+constexpr auto sequential = false;
+
 extern void cuda_main();
 
 int main() {
-
-	bool sequential = false;
 
 	if (sequential) {
 
@@ -30,7 +30,6 @@ int main() {
 		};
 		check_latin_square_sequential(char_mat, topology, conf, perm);
 		print_int_matrix(perm, 16, 16);
-
 
 	} else {
 

@@ -158,8 +158,53 @@ __global__ void check_mols_complete(int* perms, bool* latin_squares, bool* mols,
 			for (int j = i + 1; j < 16 * 16; j++) {
 				if (a == ls_A[j] && b == ls_B[j]) {
 					if (debug) printf(
-						"Thread: %d -- LS: (A = %d, B = %d) -- [A(%d, %d) = (%d, %d) = (%d, %d) = B(%d, %d)]\n",
-						idx_dst, idx_src, compare, i / 16, i % 16, a, b, ls_A[j], ls_B[j], j / 16, j % 16
+						"Thread: %d -- LS: (A = %d, B = %d) -- [(A(%d, %d), B(%d, %d)) = (A(%d, %d), B(%d, %d)) = (%d, %d)]\n",
+						idx_dst, idx_src, compare, i / 16, i % 16, i / 16, i % 16, j / 16, j % 16, j / 16, j % 16, a, b
+					);
+					mols[idx_dst] = false;
+					break;
+				}
+			}
+		}
+	}
+
+}
+
+
+__global__ void check_mols_complete(int* perms_A, int* perms_B, bool* lat_sq_A, bool* lat_sq_B, bool* mols, int* pairs, bool debug) {
+
+	int idx_src = blockIdx.x;
+	int compare = (blockIdx.y * blockDim.x) + threadIdx.x;
+
+	int block_id = blockIdx.y * gridDim.x + blockIdx.x;
+	int idx_dst = block_id * blockDim.x + threadIdx.x;
+
+	// printf("Thread: %d Compares %d and %d\n", idx_dst, idx_src, compare);
+
+	pairs[idx_dst * 2] = idx_src;
+	pairs[idx_dst * 2 + 1] = compare;
+
+	if (!lat_sq_A[idx_src] || !lat_sq_B[compare]) {	// return false if one of idx_src and compare isn't a latin square
+		if (debug) printf("Thread: %d -- %d (CHAR) or %d (ROT) is not a latin square\n", idx_dst, idx_src, compare);
+		mols[idx_dst] = false;
+	}
+	else if (idx_src == compare) {  // can't be orthogonal to itself, no symmetry here
+		// if (debug) printf("Thread: %d -- %d <= %d\n", idx_dst, idx_src, compare);
+		mols[idx_dst] = false;
+	}
+	else {
+		mols[idx_dst] = true;
+		int* ls_A = &perms_A[idx_src * 16 * 16];
+		int* ls_B = &perms_B[compare * 16 * 16];
+		int a, b;
+		for (int i = 0; i < 16 * 16 && mols[idx_dst]; i++) {
+			a = ls_A[i];
+			b = ls_B[i];
+			for (int j = i + 1; j < 16 * 16; j++) {
+				if (a == ls_A[j] && b == ls_B[j]) {
+					if (debug) printf(
+						"Thread: %d -- LS: (CHAR = %d, ROT = %d) -- [(A(%d, %d), B(%d, %d)) = (A(%d, %d), B(%d, %d)) = (%d, %d)]\n",
+						idx_dst, idx_src, compare, i / 16, i % 16, i / 16, i % 16, j / 16, j % 16, j / 16, j % 16, a, b
 					);
 					mols[idx_dst] = false;
 					break;

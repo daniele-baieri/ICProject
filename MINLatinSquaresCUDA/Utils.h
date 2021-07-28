@@ -12,4 +12,6 @@ void write_output_latin_square(FILE* fd, bool* output, bool* out_conf, int* out_
 
 void write_output_mols(FILE* fd, bool* mols, int* perm, int* pairs, int N);
 
+void write_output_mols(FILE* fd, bool* mols, int* perm_A, int* perm_B, int* pairs, int N);
+
 bool get_bit(int n, int pos, int tot_bit);

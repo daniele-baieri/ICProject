@@ -10,6 +10,8 @@ __global__ void check_latin_square(curandState* state, bool* matrices, int* topo
 
 __global__ void setup_rand_state(curandState* state);
 
-__global__ void check_mols_random(curandState* state, int* perms, bool* latin_squares, bool* mols, int* idx, bool debug);
+__global__ void check_mols_random(curandState* state, int* perms, bool* latin_squares, bool* mols, int* pairs, bool debug);
 
-__global__ void check_mols_complete(int* perms, bool* latin_squares, bool* mols, int* idx, bool debug);
+__global__ void check_mols_complete(int* perms, bool* latin_squares, bool* mols, int* pairs, bool debug);
+
+__global__ void check_mols_complete(int* perms_A, int* perms_B, bool* lat_sq_A, bool* lat_sq_B, bool* mols, int* pairs, bool debug);

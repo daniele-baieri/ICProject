@@ -1,7 +1,7 @@
 #include "Utils.h"
 #include <iostream>
 
-#define DELIMITER "-----------"
+constexpr auto DELIMITER = "-----------";
 
 
 void print_int_matrix(int* matrix, int n, int m) {
@@ -28,7 +28,7 @@ void write_output_latin_square(FILE* fd, bool* output, bool* out_conf, int* out_
 	bool out_ij;
 	for (int idx = 0; idx < N; idx++) {
 		out_ij = output[idx];
-		if (out_ij || true) {  // write all output for latin squares
+		if (!out_ij || false) {  // write all output for latin squares
 			fprintf(fd, "THREAD %d: OUTPUT = %d\n\n", idx, out_ij);
 			for (int x = 0; x < 16; x++) {
 				for (int y = 0; y < 16; y++)
@@ -55,6 +55,26 @@ void write_output_mols(FILE* fd, bool* mols, int* perm, int* pair_idxs, int N) {
 			for (int x = 0; x < 16; x++) {
 				for (int y = 0; y < 16; y++)
 					fprintf(fd, "(%2d, %2d) ", perm[pair_a * 16 * 16 + x * 16 + y], perm[pair_b * 16 * 16 + x * 16 + y]);  // show mols by columns
+				fprintf(fd, "\n");
+			}
+			fprintf(fd, "\n%s\n\n", DELIMITER);
+		}
+	}
+}
+
+
+void write_output_mols(FILE* fd, bool* mols, int* perm_A, int* perm_B, int* pair_idxs, int N) {
+	bool out_ij;
+	int pair_a, pair_b;
+	for (int i = 0; i < N; i++) {
+		out_ij = mols[i];
+		if (out_ij) {  // write only mutually orthogonal LS
+			pair_a = pair_idxs[2 * i];
+			pair_b = pair_idxs[2 * i + 1];
+			fprintf(fd, "THREAD %d: OUTPUT = %d -- LATIN SQUARES = (%d (CHAR), %d (ROT))\n\n", i, out_ij, pair_a, pair_b);
+			for (int x = 0; x < 16; x++) {
+				for (int y = 0; y < 16; y++)
+					fprintf(fd, "(%2d, %2d) ", perm_A[pair_a * 16 * 16 + x * 16 + y], perm_B[pair_b * 16 * 16 + x * 16 + y]);  // show mols by columns
 				fprintf(fd, "\n");
 			}
 			fprintf(fd, "\n%s\n\n", DELIMITER);
